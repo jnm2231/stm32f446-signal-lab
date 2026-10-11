@@ -1,35 +1,30 @@
 # STM32F446 Signal Lab
 
-A future embedded signal generation, acquisition, and DSP project.
+An embedded systems project focused on signal generation, data acquisition, and digital signal processing (DSP) using the STM32F446RE microcontroller.
+
+This project aims to develop a signal generetaion and analysis platform, integrating low-level peripherial configuration, real-time data acquisition, serial communication, and PC-based visualization.
 
 ## Hardware & Tools
 
-- Board: TODO
-- MCU: TODO
-- IDE and toolchain: TODO
-- Build system: TODO
+- Board: STMicroelectronics NUCLEO-F446RE
+- MCU: STM32F446RET6 (ARM Cortex-M4, 180 MHz)
+- Development Environment: Visual Studio Code with STM32CubeIDE for VS Code extension
+- MCU Configuration: STM32CubeMX
+- Firmware Libraries: STM32 HAL and BSP
+- Compiler: GNU Arm Embedded GCC
+- Build System: CMake + Ninja
+- Programming & Debugging: ST-LINK/V2-1, GDB, STM32CubeProgrammer
+- Version Control: Git & GitHub
 
 ## Phase 0 — Development Environment & GPIO (Completed)
 
-### Objective
+The objective of this initial phase was to set up and validate the development environment for the STM32F446RE microcontroller.
 
-TODO
+STM32CubeMX was used to configure the microcontroller peripherals and generate the initial firmware structure, while Visual Studio Code was selected as the primary development environment due to my previous experience and familiarity with the editor.
 
-### Implementation
+The development workflow was established using CMake and the GNU Arm toolchain for compilation, alongside the onboard ST-LINK debugger for firmware flashing and debugging.
 
-TODO
-
-### Technical Decisions
-
-TODO
-
-### Testing & Results
-
-TODO
-
-### Challenges & Lessons Learned
-
-TODO
+Once the environment was configured, a simple LED blinking application was implemented to verify the complete development workflow. The application toggles the onboard LED every 500 ms using the STM32 HAL and BSP libraries.
 
 ## Phase 1 — UART Communication & Command Interface (Planned)
 
