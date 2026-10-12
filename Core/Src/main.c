@@ -48,6 +48,17 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+#define UART_RX_BUFFER_SIZE 64U
+
+static uint8_t uart_rx_it_byte; //Received byte by the HAL through interruption
+
+static volatile uint8_t uart_rx_buffer[UART_RX_BUFFER_SIZE]; //Here the bytes pending to proccess are stored
+
+static volatile uint8_t uart_rx_head = 0U; //Position were the UART will write the next byte
+static volatile uint8_t uart_rx_tail = 0U; //Position where the main thread will read
+
+static volatile uint32_t uart_rx_dropped = 0U; //Count of the discard bytes if the buffer is full
+ 
 
 /* USER CODE END PV */
 
@@ -63,6 +74,20 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 static void UART_SendText(const char *text){
   HAL_UART_Transmit(&huart2, (const uint8_t *)text, (uint16_t)strlen(text), 100);
+}
+
+static uint8_t UART_ReadByte(uint8_t *byte){
+  //Check if the buffer is empty
+  if(uart_rx_head == uart_rx_tail){
+    return 0U;
+  }
+
+  *byte = uart_rx_buffer[uart_rx_tail];
+
+  //Circular buffer
+  uart_rx_tail = (uint8_t)((uart_rx_tail + 1U) % UART_RX_BUFFER_SIZE);
+
+  return 1U;
 }
 
 /* USER CODE END 0 */
@@ -109,6 +134,11 @@ int main(void)
 
   UART_SendText("STM32F446RE ready\r\n");
 
+  if (HAL_UART_Receive_IT(&huart2, &uart_rx_it_byte, 1U) != HAL_OK)
+{
+    Error_Handler();
+}
+
   /* USER CODE END 2 */
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
@@ -116,64 +146,54 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    while (UART_ReadByte(&rx_byte) != 0U) {
 
-    if(HAL_UART_Receive(&huart2, &rx_byte, 1, 10) == HAL_OK){
-      if(rx_byte == '\r' || rx_byte == '\n'){
-        if(discard_line){
+      if (rx_byte == '\r' || rx_byte == '\n') {
+        if (discard_line) {
           UART_SendText("ERROR: Command too long \r\n");
           discard_line = 0;
           command_length = 0;
-        }
-        else if (command_length > 0) {
+        } else if (command_length > 0) {
           command[command_length] = '\0';
 
-          if(strcmp(command, "LED ON") == 0){
+          if (strcmp(command, "LED ON") == 0) {
             BSP_LED_On(LED2);
             led_on = 1;
             UART_SendText("OK: LED ON\r\n");
-          }
-          else if (strcmp(command, "LED OFF") == 0) {
+          } else if (strcmp(command, "LED OFF") == 0) {
             BSP_LED_Off(LED2);
             led_on = 0;
             UART_SendText("OK: LED OFF\r\n");
-          }
-          else if(strcmp(command, "STATUS") == 0){
-            if(led_on == 1){
+          } else if (strcmp(command, "STATUS") == 0) {
+            if (led_on == 1) {
               UART_SendText("STATUS: LED ON\r\n");
-            }
-            else if(led_on == 0){
-              UART_SendText("STATUS: LED ON\r\n");
-            }
-            else{
+            } else if (led_on == 0) {
+              UART_SendText("STATUS: LED OFF\r\n");
+            } else {
               UART_SendText("STATUS ERROR: Unknown Status\r\n");
             }
-          }
-          else {
+          } else {
             UART_SendText("ERROR: Unknown command\r\n");
           }
           command_length = 0;
         }
-      }
-      else if(!discard_line){
+      } else if (!discard_line) {
         if (command_length < sizeof(command) - 1U) {
           command[command_length] = (char)rx_byte;
           command_length++;
-        }
-        else {
+        } else {
           discard_line = 1;
         }
       }
     }
+    /* USER CODE END 3 */
   }
-  /* USER CODE END 3 */
 }
-
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -288,7 +308,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+  if(huart->Instance == USART2){
+    uint8_t next_head = (uint8_t)((uart_rx_head + 1U) % UART_RX_BUFFER_SIZE);
+    
+    if(next_head != uart_rx_tail){
+      uart_rx_buffer[uart_rx_head] = uart_rx_it_byte;
+      uart_rx_head = next_head;
+    }
+    else {
+      uart_rx_dropped++;
+    }
 
+    HAL_UART_Receive_IT(&huart2, &uart_rx_it_byte, 1U);
+  }
+}
 /* USER CODE END 4 */
 
 /**
