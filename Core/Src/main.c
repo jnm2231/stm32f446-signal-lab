@@ -24,6 +24,7 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_uart.h"
 #include "stm32f4xx_nucleo.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +61,9 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void UART_SendText(const char *text){
+  HAL_UART_Transmit(&huart2, (const uint8_t *)text, (uint16_t)strlen(text), 100);
+}
 
 /* USER CODE END 0 */
 
@@ -95,9 +99,16 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   BSP_LED_Init(LED2);
+  BSP_LED_Off(LED2);
 
   uint8_t rx_byte = 0;
-  uint32_t last_toggle = HAL_GetTick();
+  char command[32] = {0};
+  uint8_t command_length = 0;
+  uint8_t discard_line = 0;
+  uint8_t led_on = 0;
+
+  UART_SendText("STM32F446RE ready\r\n");
+
   /* USER CODE END 2 */
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
@@ -113,12 +124,51 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
     if(HAL_UART_Receive(&huart2, &rx_byte, 1, 10) == HAL_OK){
-      HAL_UART_Transmit(&huart2, &rx_byte, 1, 100);
-    }
+      if(rx_byte == '\r' || rx_byte == '\n'){
+        if(discard_line){
+          UART_SendText("ERROR: Command too long \r\n");
+          discard_line = 0;
+          command_length = 0;
+        }
+        else if (command_length > 0) {
+          command[command_length] = '\0';
 
-    if(HAL_GetTick() - last_toggle > 500U){
-      BSP_LED_Toggle(LED2);
-      last_toggle = HAL_GetTick();
+          if(strcmp(command, "LED ON") == 0){
+            BSP_LED_On(LED2);
+            led_on = 1;
+            UART_SendText("OK: LED ON\r\n");
+          }
+          else if (strcmp(command, "LED OFF") == 0) {
+            BSP_LED_Off(LED2);
+            led_on = 0;
+            UART_SendText("OK: LED OFF\r\n");
+          }
+          else if(strcmp(command, "STATUS") == 0){
+            if(led_on == 1){
+              UART_SendText("STATUS: LED ON\r\n");
+            }
+            else if(led_on == 0){
+              UART_SendText("STATUS: LED ON\r\n");
+            }
+            else{
+              UART_SendText("STATUS ERROR: Unknown Status\r\n");
+            }
+          }
+          else {
+            UART_SendText("ERROR: Unknown command\r\n");
+          }
+          command_length = 0;
+        }
+      }
+      else if(!discard_line){
+        if (command_length < sizeof(command) - 1U) {
+          command[command_length] = (char)rx_byte;
+          command_length++;
+        }
+        else {
+          discard_line = 1;
+        }
+      }
     }
   }
   /* USER CODE END 3 */

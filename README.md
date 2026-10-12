@@ -48,6 +48,8 @@ TODO
 
 - When trying the funcionality of the UART, the breakpoints didn't seem to correctly pause the program. After revisioning the code, I discovered the problem was due to me executing the debugger with the option in STM32: Debug without reprogramming. This option didn't refresh the flash with the new compiled ELF, and thus, the breakpoint wasn't pausing the program as it was running an old version of it.
 
+- I incorretly checked the condition of strcmp. I forgott to compare in the If the strcmp with 0, so it was always entering in the first if, the one of LED ON.
+
 ## Phase 2 — Waveform Generation (Planned)
 
 ### Objective
