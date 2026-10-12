@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_uart.h"
 #include "stm32f4xx_nucleo.h"
 /* USER CODE END Includes */
@@ -95,7 +96,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   BSP_LED_Init(LED2);
 
-  uint8_t message[] = "Hello from STM32F446RE\r\n";
+  uint8_t rx_byte = 0;
+  uint32_t last_toggle = HAL_GetTick();
   /* USER CODE END 2 */
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
@@ -110,10 +112,14 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    BSP_LED_Toggle(LED2);
+    if(HAL_UART_Receive(&huart2, &rx_byte, 1, 10) == HAL_OK){
+      HAL_UART_Transmit(&huart2, &rx_byte, 1, 100);
+    }
 
-    HAL_UART_Transmit(&huart2, message, sizeof(message)-1, 1000);
-    HAL_Delay(500);
+    if(HAL_GetTick() - last_toggle > 500U){
+      BSP_LED_Toggle(LED2);
+      last_toggle = HAL_GetTick();
+    }
   }
   /* USER CODE END 3 */
 }
